@@ -165,14 +165,14 @@ class LLMGuidancePolicy:
             logger.warning("ChatCompletion failed: %s", str(e))
             return None, None
         
-    def corrector_mutators(
+    def course_alteration_mutators(
         self,
         mod,
         available_mutators: List[str],
         llm_bucket: List[str],
         historical_perf: Optional[str] = None,
         available_mutator_probs: Optional[Dict[str, float]] = None,
-        corrector_model: Optional[str] = None,
+        course_alteration_model: Optional[str] = None,
         small_model_name: Optional[str] = None,
         small_mutators: Optional[List[str]] = None,
         small_next_model: Optional[str] = None,
@@ -180,16 +180,16 @@ class LLMGuidancePolicy:
         small_child_score: Optional[float] = None,
         model_performance: Optional[str] = None,
     ) -> Tuple[Optional[List[str]], Optional[str]]:
-        if not corrector_model:
-            raise ValueError("corrector_mutators called without corrector_model")
+        if not course_alteration_model:
+            raise ValueError("course_alteration_mutators called without course_alteration_model")
 
         self._call_seq += 1
         call_id = self._call_seq
-        logger.warning("[LLM %d] corrector_mutators(): corrector_model=%s", call_id, corrector_model)
+        logger.warning("[LLM %d] course_alteration_mutators(): course_alteration_model=%s", call_id, course_alteration_model)
 
         system_prompt, user_prompt = self._build_correction_prompt(
             llm_bucket=llm_bucket,
-            corrector_model=corrector_model,
+            course_alteration_model=course_alteration_model,
             available_mutators=available_mutators,
             historical_perf=historical_perf,
             mutator_probs=available_mutator_probs,
@@ -204,8 +204,8 @@ class LLMGuidancePolicy:
         full_prompt = system_prompt + user_prompt
         p_chars, p_tokens = self._lengths(full_prompt)
         if self.verbose:
-            logger.warning("\n Full Corrector Prompt \n%s", full_prompt)
-        logger.warning("\n==== Current Corrector Prompt stats (chars=%d, tokens≈%d) ====\n", p_chars, p_tokens)
+            logger.warning("\n Full course_alteration Prompt \n%s", full_prompt)
+        logger.warning("\n==== Current course_alteration Prompt stats (chars=%d, tokens≈%d) ====\n", p_chars, p_tokens)
 
         self.cum_prompt_chars += p_chars
         self.cum_prompt_tokens += p_tokens
@@ -213,17 +213,17 @@ class LLMGuidancePolicy:
         try:
             t0 = time.perf_counter()
 
-            if self._is_openai_model(corrector_model):
+            if self._is_openai_model(course_alteration_model):
                 response = self._openai_client.chat.completions.create(
-                    model=corrector_model,
+                    model=course_alteration_model,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
                     ],
                 )
-            elif self._is_google_model(corrector_model):
+            elif self._is_google_model(course_alteration_model):
                 response = self.nebius_client.chat.completions.create(
-                    model=corrector_model,
+                    model=course_alteration_model,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
@@ -231,7 +231,7 @@ class LLMGuidancePolicy:
                 )
             else:
                 response = self.ns_client.chat.completions.create(
-                    model=corrector_model,
+                    model=course_alteration_model,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
@@ -241,12 +241,12 @@ class LLMGuidancePolicy:
             api_latency = time.perf_counter() - t0
 
             content = response.choices[0].message.content
-            logger.warning("[LLM %d] corrector API latency: %.3f sec", call_id, api_latency)
+            logger.warning("[LLM %d] course_alteration API latency: %.3f sec", call_id, api_latency)
 
             a_chars, a_tokens = self._lengths(content)
             if self.verbose:
-                logger.warning("\n Corrector raw response:\n%s", content)
-            logger.warning("\n==== Current Corrector Answer stats (chars=%d, tokens≈%d) ====\n", a_chars, a_tokens)
+                logger.warning("\n course_alteration raw response:\n%s", content)
+            logger.warning("\n==== Current course_alteration Answer stats (chars=%d, tokens≈%d) ====\n", a_chars, a_tokens)
 
             self.cum_answer_chars += a_chars
             self.cum_answer_tokens += a_tokens
@@ -257,7 +257,7 @@ class LLMGuidancePolicy:
                 valid_models=llm_bucket,
             )
             logger.warning(
-                "[LLM %d] corrector parsed output: mutators=%s next_model=%s",
+                "[LLM %d] course_alteration parsed output: mutators=%s next_model=%s",
                 call_id, mutator_list, next_model
             )
 
@@ -266,7 +266,7 @@ class LLMGuidancePolicy:
             return mutator_list, next_model
 
         except Exception as e:
-            logger.warning("Corrector ChatCompletion failed: %s", str(e))
+            logger.warning("course_alteration ChatCompletion failed: %s", str(e))
             return None, None
 
 
@@ -351,7 +351,7 @@ class LLMGuidancePolicy:
     def _build_correction_prompt(
         self,
         llm_bucket: List[str],
-        corrector_model: str,
+        course_alteration_model: str,
         available_mutators: List[str],
         historical_perf: Optional[str],
         mutator_probs: Optional[Dict[str, float]] = None,
@@ -365,7 +365,7 @@ class LLMGuidancePolicy:
         small_mutators = small_mutators or []
 
         system_msg = (
-            "You are the LARGE-MODEL corrector in a TVM MetaSchedule MCTS search.\n"
+            "You are the LARGE-MODEL course_alteration in a TVM MetaSchedule MCTS search.\n"
             "A SMALL model has proposed a sequence of mutators and a next_model to use for expanding the child node.\n"
             "The SMALL model's proposal that triggered this correction call led to a predicted regression "
             "(predicted child score < predicted current score) according to the cost model.\n\n"

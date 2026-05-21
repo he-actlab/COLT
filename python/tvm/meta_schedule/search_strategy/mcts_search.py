@@ -62,11 +62,11 @@ class ModelStats:
     n_hits: int = 0
     total_tokens: int = 0 # not used
     n_errors: int = 0
-    n_corrector_calls: int = 0
-    corrector_total_latency: float = 0.0
-    n_corrector_scored: int = 0
-    n_corrector_hits: int = 0
-    n_corrector_errors: int = 0
+    n_course_alteration_calls: int = 0
+    course_alteration_total_latency: float = 0.0
+    n_course_alteration_scored: int = 0
+    n_course_alteration_hits: int = 0
+    n_course_alteration_errors: int = 0
     param_count: Optional[float] = None
     phi_small: Optional[float] = None
 
@@ -237,7 +237,7 @@ class MCTSTuner:
         self._small_model_regression_streak: int = 0
 
         # Correct on every K-th regression in the streak: 5,10,15,...
-        self._corrector_every_k_regressions: int = 2
+        self._course_alteration_every_k_regressions: int = 2
         self.mcts_dead_end_fail_limit = 5
 
     def attach_search_state(self, search_state: "MCTSTuningState") -> None:
@@ -510,19 +510,19 @@ class MCTSTuner:
             }
 
             if large and (m == large):
-                corrector_mean_latency = (
-                    (st.corrector_total_latency / st.n_corrector_calls)
-                    if st.n_corrector_calls > 0 else None
+                course_alteration_mean_latency = (
+                    (st.course_alteration_total_latency / st.n_course_alteration_calls)
+                    if st.n_course_alteration_calls > 0 else None
                 )
-                corrector_hit_rate = (
-                    (st.n_corrector_hits / st.n_corrector_scored)
-                    if st.n_corrector_scored > 0 else None
+                course_alteration_hit_rate = (
+                    (st.n_course_alteration_hits / st.n_course_alteration_scored)
+                    if st.n_course_alteration_scored > 0 else None
                 )
                 entry.update({
-                    "n_corrector_calls": float(st.n_corrector_calls),
-                    "corrector_mean_latency": corrector_mean_latency,
-                    "corrector_hit_rate": corrector_hit_rate,
-                    "n_corrector_errors": float(st.n_corrector_errors),
+                    "n_course_alteration_calls": float(st.n_course_alteration_calls),
+                    "course_alteration_mean_latency": course_alteration_mean_latency,
+                    "course_alteration_hit_rate": course_alteration_hit_rate,
+                    "n_course_alteration_errors": float(st.n_course_alteration_errors),
                 })
 
             snap[m] = entry
@@ -552,7 +552,7 @@ class MCTSTuner:
 
             if large and (m == large):
                 line += (
-                    f", corrector_calls={int(st.n_corrector_calls)}, corrector_call_errors={int(st.n_corrector_errors)}"
+                    f", course_alteration_calls={int(st.n_course_alteration_calls)}, course_alteration_call_errors={int(st.n_course_alteration_errors)}"
                 )
 
             lines.append(line)
@@ -659,18 +659,18 @@ class MCTSTuner:
                     f"regular_calls={number_calls_str}, regular_hit_rate={hit_rate_str}, regular_errors={n_errors_str}"
                 )
 
-                # Only show corrector stats for the default/large model
+                # Only show course_alteration stats for the default/large model
                 if large and (m == large):
-                    n_corrector_calls = st.get("n_corrector_calls", None)
-                    corrector_hit_rate = st.get("corrector_hit_rate", None)
-                    n_corrector_errors = st.get("n_corrector_errors", None)
+                    n_course_alteration_calls = st.get("n_course_alteration_calls", None)
+                    course_alteration_hit_rate = st.get("course_alteration_hit_rate", None)
+                    n_course_alteration_errors = st.get("n_course_alteration_errors", None)
 
-                    n_corrector_calls_str = "N/A" if n_corrector_calls is None else f"{int(n_corrector_calls)}"
-                    corrector_hit_rate_str = "N/A" if corrector_hit_rate is None else f"{corrector_hit_rate:.3f}"
-                    n_corrector_errors_str = "N/A" if n_corrector_errors is None else f"{int(n_corrector_errors)}"
+                    n_course_alteration_calls_str = "N/A" if n_course_alteration_calls is None else f"{int(n_course_alteration_calls)}"
+                    course_alteration_hit_rate_str = "N/A" if course_alteration_hit_rate is None else f"{course_alteration_hit_rate:.3f}"
+                    n_course_alteration_errors_str = "N/A" if n_course_alteration_errors is None else f"{int(n_course_alteration_errors)}"
 
                     line += (
-                        f"; corrector_calls={n_corrector_calls_str}, corrector_hit_rate={corrector_hit_rate_str}, corrector_errors={n_corrector_errors_str}"
+                        f"; course_alteration_calls={n_course_alteration_calls_str}, course_alteration_hit_rate={course_alteration_hit_rate_str}, course_alteration_errors={n_course_alteration_errors_str}"
                     )
 
                 lines.append(line)
@@ -682,7 +682,7 @@ class MCTSTuner:
         lines.append(f"Model used to expand the current node: {parent_model or 'N/A'}; number of parameters: {parent_pc_str}")
         lines.append(f"Model used to expand the parent node: {grandparent_model or 'N/A'}; number of parameters: {grandparent_pc_str}")
         lines.append(f"Model used to expand the grandparent node: {grgrandparent_model or 'N/A'}; number of parameters: {grgrandparent_pc_str}")
-        lines.append("Corrector stats (corrector_calls/corrector_hit_rate/corrector_errors) exist only for the largest model and are separate from regular expansion calls.")
+        lines.append("course_alteration stats (course_alteration_calls/course_alteration_hit_rate/course_alteration_errors) exist only for the largest model and are separate from regular expansion calls.")
 
         
         return "\n".join(lines)
@@ -953,32 +953,32 @@ class MCTSTuner:
                 and (child_score is not None)
                 and (child_score < leaf_score - 1e-12)
                 and (self._small_model_regression_streak > 0)
-                and (self._small_model_regression_streak % self._corrector_every_k_regressions == 0)
+                and (self._small_model_regression_streak % self._course_alteration_every_k_regressions == 0)
                 and (self.llm_policy is not None)
                 and (self._alt_model() is not None)
                 and (self.llm_budget > 0)
             )
 
             if do_alt:
-                corrector_model = self._alt_model()  # default/large model
-                assert corrector_model is not None
+                course_alteration_model = self._alt_model()  # default/large model
+                assert course_alteration_model is not None
 
                 logger.warning(
-                    "[LLM-CORRECTOR] Triggered: streak=%d (every %d). small_model=%s corrector_model=%s",
+                    "[LLM-course_alteration] Triggered: streak=%d (every %d). small_model=%s course_alteration_model=%s",
                     self._small_model_regression_streak,
-                    self._corrector_every_k_regressions,
+                    self._course_alteration_every_k_regressions,
                     cur_model,
-                    corrector_model,
+                    course_alteration_model,
                 )
 
-                corrector_start = time.time()
-                v_mutators, v_next_model = self.llm_policy.corrector_mutators(
+                course_alteration_start = time.time()
+                v_mutators, v_next_model = self.llm_policy.course_alteration_mutators(
                     mod=leaf.schedule.mod,
                     available_mutators=possible_mutator_names,
                     llm_bucket=self.llm_bucket,
                     historical_perf=short_hist_perf,
                     available_mutator_probs=mutator_probs_dict,
-                    corrector_model=corrector_model,
+                    course_alteration_model=course_alteration_model,
                     small_model_name=cur_model,
                     small_mutators=chosen_mutator_names or [],
                     small_next_model=next_model_name,
@@ -986,40 +986,40 @@ class MCTSTuner:
                     small_child_score=child_score,
                     model_performance=model_performance,
                 )
-                corrector_elapsed = time.time() - corrector_start
-                st_large = self._llm_model_stats.setdefault(corrector_model, ModelStats())
-                st_large.n_corrector_calls += 1
-                st_large.corrector_total_latency += float(corrector_elapsed)
+                course_alteration_elapsed = time.time() - course_alteration_start
+                st_large = self._llm_model_stats.setdefault(course_alteration_model, ModelStats())
+                st_large.n_course_alteration_calls += 1
+                st_large.course_alteration_total_latency += float(course_alteration_elapsed)
                 self.llm_budget = max(0, self.llm_budget - 1)
-                logger.warning("[LLM-CORRECT] Budget decremented (corrector). Remaining=%d", self.llm_budget)
+                logger.warning("[LLM-CORRECT] Budget decremented (course_alteration). Remaining=%d", self.llm_budget)
                 if (not v_next_model) or (v_next_model not in self.llm_bucket):
-                    st_large.n_corrector_errors += 1
+                    st_large.n_course_alteration_errors += 1
                     # fallback: keep already-sanitized next_model_name from small call
                     v_next_model = next_model_name
                 if not v_mutators:
-                    st_large.n_corrector_errors += 1
-                    logger.warning("[LLM-CORRECT] Corrector returned no mutators. Keeping small model schedule.")
+                    st_large.n_course_alteration_errors += 1
+                    logger.warning("[LLM-CORRECT] course_alteration returned no mutators. Keeping small model schedule.")
                 else:
-                    corrector_sch = self._apply_mutator_names_sequence(
+                    course_alteration_sch = self._apply_mutator_names_sequence(
                         base_sch=leaf.schedule,
                         mutator_names=v_mutators,
                         rand_state=rand_state,
                         log_prefix="[LLM-CORRECT]",
                         leaf_depth=leaf.depth,
                     )
-                    if corrector_sch is None:
+                    if course_alteration_sch is None:
                         logger.warning(
-                            "[LLM-CORRECT] Corrector mutators produced no valid schedule. Keeping small model schedule."
+                            "[LLM-CORRECT] course_alteration mutators produced no valid schedule. Keeping small model schedule."
                         )
                     else:
                         v_score: Optional[float] = None
                         try:
-                            v_score_list = self._predict_normalized_score([corrector_sch])
+                            v_score_list = self._predict_normalized_score([course_alteration_sch])
                             v_score = v_score_list[0] if v_score_list else 0.0
 
-                            st_large.n_corrector_scored += 1
+                            st_large.n_course_alteration_scored += 1
                             if v_score > leaf_score:
-                                st_large.n_corrector_hits += 1
+                                st_large.n_course_alteration_hits += 1
                         except Exception:
                             v_score = None
 
@@ -1033,19 +1033,19 @@ class MCTSTuner:
                                     float(child_score),
                                 )
                             else:
-                                new_sch = corrector_sch
+                                new_sch = course_alteration_sch
                                 chosen_mutator_names = v_mutators
                                 next_model_name = v_next_model
                                 replaced_small_child = True
                         else:
-                            new_sch = corrector_sch or new_sch
-                            if corrector_sch is not None:
+                            new_sch = course_alteration_sch or new_sch
+                            if course_alteration_sch is not None:
                                 chosen_mutator_names = v_mutators
                                 next_model_name = v_next_model
                                 replaced_small_child = True
 
                         logger.warning(
-                            "[LLM-CORRECT] leaf_score=%.6f small_child_score=%s corrector_score=%s replaced_small_child=%s",
+                            "[LLM-CORRECT] leaf_score=%.6f small_child_score=%s course_alteration_score=%s replaced_small_child=%s",
                             float(leaf_score),
                             "N/A" if child_score is None else f"{float(child_score):.6f}",
                             "N/A" if v_score is None else f"{float(v_score):.6f}",
@@ -1053,13 +1053,13 @@ class MCTSTuner:
                         )
 
                 logger.warning(
-                    "[LLM-CORRECT] stats: corrector_calls=%d corrector_scored=%d corrector_hits=%d corrector_errors=%d",
-                    int(st_large.n_corrector_calls),
-                    int(st_large.n_corrector_scored),
-                    int(st_large.n_corrector_hits),
-                    int(st_large.n_corrector_errors),
+                    "[LLM-CORRECT] stats: course_alteration_calls=%d course_alteration_scored=%d course_alteration_hits=%d course_alteration_errors=%d",
+                    int(st_large.n_course_alteration_calls),
+                    int(st_large.n_course_alteration_scored),
+                    int(st_large.n_course_alteration_hits),
+                    int(st_large.n_course_alteration_errors),
                 )
-                self._log_llm_bucket_call_counts(where=f"after CORRECTOR call (model={corrector_model})")
+                self._log_llm_bucket_call_counts(where=f"after course_alteration call (model={course_alteration_model})")
 
             child = MCTSNode(schedule=new_sch, parent=leaf, depth=leaf.depth + 1)
             child.model_name = next_model_name

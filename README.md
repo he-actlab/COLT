@@ -15,7 +15,7 @@
 <!--- specific language governing permissions and limitations -->
 <!--- under the License. -->
 
-# COLT: Lightweight Multi-LLM Collaboration through Shared MCTS Reasoning for Model Compilation
+# LiteCoOp: Lightweight Multi-LLM Shared-Tree Reasoning for Model-Serving Compiler Optimizations
 Detailed implementations of this project are included in the folder python/tvm/meta_schedule/search_strategy. This project uses TVM, an open source compiler stack for deep learning systems with [Apache-2.0](LICENSE) license.
 
 Usage:
